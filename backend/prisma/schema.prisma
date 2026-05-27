@@ -254,6 +254,8 @@ model SystemConfig {
 
   @@index([isActive])
   @@index([createdAt])
+}
+
 enum JobStatus {
   PENDING
   ACTIVE
