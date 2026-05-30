@@ -1,6 +1,7 @@
 import { stellarService } from './stellar.service';
 import { metricsService } from './metrics.service';
 import { redis } from '../lib/redis';
+import { smtpService } from '../lib/smtp.service';
 import type { AlertPayload } from '../types/alerts';
 import logger from '../utils/logger';
 import promClient, { Gauge } from 'prom-client';
@@ -301,6 +302,25 @@ export class HotWalletMonitorService {
   }
 
   private async sendEmailAlert(recipients: string, alert: AlertPayload): Promise<void> {
+    const text = [
+      'Hot Wallet Low Balance Alert',
+      `Wallet: ${alert.walletLabel}`,
+      `Asset: ${alert.assetCode}`,
+      `Current Balance: ${alert.currentBalance}`,
+      `Threshold: ${alert.thresholdAmount}`,
+      `Public Key: ${alert.publicKey}`,
+      `Detected At: ${alert.checkedAt}`,
+    ].join('\n');
+
+    const sent = await smtpService.sendMail({
+      to: recipients.split(',').map((recipient) => recipient.trim()).filter(Boolean),
+      subject: `[AnchorPoint] Low Balance: ${alert.walletLabel}`,
+      text,
+    });
+
+    if (sent) {
+      logger.info('[HotWalletMonitor] Email alert sent', { wallet: alert.walletLabel, recipients });
+    }
     await this.alertEmailService.sendHotWalletLowBalanceAlert(recipients, alert);
     logger.info('[HotWalletMonitor] Email alert dispatched', { wallet: alert.walletLabel });
   }

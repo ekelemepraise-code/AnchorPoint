@@ -1,4 +1,5 @@
 import { config } from '../config/env';
+import { smtpService } from '../lib/smtp.service';
 import { createSmtpTransporter, isSmtpConfigured } from '../lib/smtp/create-transporter';
 import logger from '../utils/logger';
 
@@ -16,6 +17,7 @@ export class SmtpAdminEmailService implements AdminEmailService {
   async sendPasswordResetEmail(input: PasswordResetEmailInput): Promise<void> {
     const resetUrl = `${config.ADMIN_PASSWORD_RESET_URL_BASE}?token=${encodeURIComponent(input.token)}`;
 
+    await smtpService.sendMail({
     if (!isSmtpConfigured()) {
       logger.info('SMTP not configured; password reset email logged for development', {
         to: input.to,
