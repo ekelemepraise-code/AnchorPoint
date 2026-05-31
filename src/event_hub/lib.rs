@@ -29,8 +29,8 @@ pub enum DataKey {
     RegisteredContracts,
     /// Event counter for generating unique event IDs
     EventCounter,
-    /// Event archive: log of all captured cross-contract events
-    EventLog,
+    /// Event archive entry keyed by event id.
+    EventLogEntry(u64),
 }
 
 // ── Contract Types ──────────────────────────────────────────────────────────
@@ -145,6 +145,7 @@ impl EventHub {
     /// # Returns
     /// `true` if the contract is registered, `false` otherwise
     pub fn is_registered(env: Env, contract: Address) -> bool {
+        Self::is_registered_source(&env, &contract)
         let contracts: Map<Address, bool> = env
             .storage()
             .instance()
@@ -170,6 +171,9 @@ impl EventHub {
         event_type: SorobanString,
         event_data: Bytes,
     ) {
+        // Verify source contract is registered
+        let is_registered = Self::is_registered_source(&env, &source_contract);
+        assert!(is_registered, "source contract not registered");
         Self::require_registered_source(&env, &source_contract);
 
         // Get current timestamp
@@ -195,17 +199,9 @@ impl EventHub {
             event_data: event_data.clone(),
         };
 
-        // Add to event log
-        let mut event_log: Vec<EventLogEntry> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::EventLog)
-            .unwrap_or_else(|| Vec::new(&env));
-
-        event_log.push_back(log_entry);
         env.storage()
             .persistent()
-            .set(&DataKey::EventLog, &event_log);
+            .set(&DataKey::EventLogEntry(new_counter), &log_entry);
 
         // Create and emit cross-contract event
         let cross_contract_event = CrossContractEvent {
@@ -242,25 +238,24 @@ impl EventHub {
     /// # Returns
     /// A vector of EventLogEntry items
     pub fn get_events(env: Env, start_id: u64, limit: u32) -> Vec<EventLogEntry> {
-        let event_log: Vec<EventLogEntry> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::EventLog)
-            .unwrap_or_else(|| Vec::new(&env));
-
         let mut result = Vec::new(&env);
-        let limit = limit as usize;
-        let mut count = 0;
+        let counter = Self::get_event_count(env.clone());
+        let mut event_id = start_id;
 
-        for i in 0..event_log.len() {
-            if count >= limit {
+        while event_id <= counter && result.len() < limit {
+            if event_id == 0 {
+                event_id = 1;
+                continue;
+            }
+
+            if let Some(entry) = Self::get_event_entry(&env, event_id) {
+                result.push_back(entry);
+            }
+
+            if event_id == u64::MAX {
                 break;
             }
-            let entry = event_log.get(i).unwrap();
-            if entry.id >= start_id {
-                result.push_back(entry);
-                count += 1;
-            }
+            event_id += 1;
         }
 
         result
@@ -275,20 +270,7 @@ impl EventHub {
     /// # Returns
     /// The EventLogEntry if found, panics otherwise
     pub fn get_event(env: Env, event_id: u64) -> EventLogEntry {
-        let event_log: Vec<EventLogEntry> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::EventLog)
-            .unwrap_or_else(|| Vec::new(&env));
-
-        for i in 0..event_log.len() {
-            let entry = event_log.get(i).unwrap();
-            if entry.id == event_id {
-                return entry;
-            }
-        }
-
-        panic!("event not found");
+        Self::get_event_entry(&env, event_id).expect("event not found")
     }
 
     /// Get events from a specific source contract
@@ -305,25 +287,21 @@ impl EventHub {
         source_contract: Address,
         limit: u32,
     ) -> Vec<EventLogEntry> {
-        let event_log: Vec<EventLogEntry> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::EventLog)
-            .unwrap_or_else(|| Vec::new(&env));
-
         let mut result = Vec::new(&env);
-        let limit = limit as usize;
-        let mut count = 0;
+        let counter = Self::get_event_count(env.clone());
+        let mut event_id = 1u64;
 
-        for i in 0..event_log.len() {
-            if count >= limit {
+        while event_id <= counter && result.len() < limit {
+            if let Some(entry) = Self::get_event_entry(&env, event_id) {
+                if entry.source_contract == source_contract {
+                    result.push_back(entry);
+                }
+            }
+
+            if event_id == u64::MAX {
                 break;
             }
-            let entry = event_log.get(i).unwrap();
-            if entry.source_contract == source_contract {
-                result.push_back(entry);
-                count += 1;
-            }
+            event_id += 1;
         }
 
         result
@@ -343,13 +321,28 @@ impl EventHub {
             .get(&DataKey::RegisteredContracts)
             .expect("hub not initialized");
 
+        contracts.keys()
+    }
         let mut result = Vec::new(&env);
         let keys = contracts.keys();
         for i in 0..keys.len() {
             result.push_back(keys.get(i).unwrap());
         }
 
-        result
+    fn is_registered_source(env: &Env, contract: &Address) -> bool {
+        let contracts: Map<Address, bool> = env
+            .storage()
+            .instance()
+            .get(&DataKey::RegisteredContracts)
+            .expect("hub not initialized");
+
+        contracts.get(contract.clone()).unwrap_or(false)
+    }
+
+    fn get_event_entry(env: &Env, event_id: u64) -> Option<EventLogEntry> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::EventLogEntry(event_id))
     }
 
     /// Require authorization from the initialized hub admin.
