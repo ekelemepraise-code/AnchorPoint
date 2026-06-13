@@ -28,7 +28,7 @@ jest.mock('../services/redis.service', () => ({
 describe('AnchorPoint E2E Tests - Cross-Border Payment Flow', () => {
   const clientKeypair = Keypair.random();
   const clientPublicKey = clientKeypair.publicKey();
-  const authToken = '';
+  let authToken = '';
   let quoteId = '';
   let sep31TransactionId = '';
 

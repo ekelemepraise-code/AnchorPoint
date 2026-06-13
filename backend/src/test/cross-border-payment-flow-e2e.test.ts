@@ -24,7 +24,7 @@ describe('AnchorPoint E2E - Cross-border payment flow (KYC → SEP-38 quote → 
   const clientPublicKey = 'GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGZWM9CQJURIXI5JLHY2QB';
   const receiverPublicKey = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
 
-  let authToken = 'mock-jwt-token-for-e2e-testing';
+  const authToken = 'mock-jwt-token-for-e2e-testing';
   let quoteId = '';
   let transactionId = '';
 

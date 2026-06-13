@@ -62,6 +62,7 @@ export interface Sep31Transaction {
     timestamp: string;
     message?: string;
   }>;
+}
 
 // ─── Callback Notifier Interface ──────────────────────────────────────────────
 

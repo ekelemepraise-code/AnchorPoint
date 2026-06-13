@@ -26,7 +26,7 @@ import notificationsRouter from './api/routes/notifications.route';
 import { publicLimiter } from './api/middleware/rate-limit.middleware';
 import { notificationService } from './services/notification.service';
 import { createEmailProvider, ConsoleSmsProvider, ConsolePushProvider } from './lib/notifications/providers';
-import { NotificationType } from '@prisma/client';
+import { NotificationType } from './services/notification.service';
 import { validateKmsConfigOnStartup } from './lib/key-management.service';
 import queueDashboardRouter from './api/routes/queue-dashboard.route';
 

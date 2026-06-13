@@ -11,16 +11,17 @@ import {
   SignerInfo,
   SignatureInfo,
   MultiKeyChallenge,
-  MultiKeyVerifiedToken
-} from '../../services/auth.service';
-import { 
+  MultiKeyVerifiedToken,
   generateSep10ChallengeTransaction,
   storeSep10Challenge,
-  verifySep10ChallengeTransaction,
+  verifySep10ChallengeTransaction
+} from '../../services/auth.service';
+import { 
   extractAccountFromSep10Transaction
 } from '../../utils/sep10-stellar';
 import { config } from '../../config/env';
 import { NetworkType } from '../../config/networks';
+import logger from '../../utils/logger';
 
 interface ChallengeRequest {
   account: string;

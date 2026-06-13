@@ -91,7 +91,7 @@ export class Sep12Controller {
           Object.keys(extraPayload).length > 0
             ? cryptoService.encrypt(JSON.stringify(extraPayload))
             : null
-        ),
+        ) as any,
         status: KYCStatus.PENDING,
       };
 
